@@ -83,7 +83,10 @@ await sleep(randomBetween(4000, 6000));
 
 // Debug: take screenshot to see what happened after click
 await page.screenshot({ path: '/tmp/after-click.png' });
-log('Screenshot saved to /tmp/after-click.png');
+const imgBase64 = fs.readFileSync('/tmp/after-click.png').toString('base64');
+log('SCREENSHOT_BASE64_START');
+console.log(imgBase64.substring(0, 500));
+log('SCREENSHOT_BASE64_END');
     const CHAT_INPUT = 'textarea[placeholder*="Type the message"]';
     await page.waitForSelector(CHAT_INPUT, { timeout: 20000 });
     log(`Chatbot open. Starting form...`);
