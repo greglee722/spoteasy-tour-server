@@ -52,8 +52,8 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
     const page = await context.newPage();
 
     log(`Navigating to property...`);
-  await page.goto(propertyUrl, { waitUntil: 'networkidle', timeout: 90000 });
-    await sleep(randomBetween(2000, 4000));
+    await page.goto(propertyUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await sleep(randomBetween(5000, 7000));
 
     await randomMouseMove(page);
     await page.evaluate(() => window.scrollBy(0, window.innerHeight * 0.4));
@@ -63,30 +63,28 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
     await sleep(randomBetween(1000, 2000));
 
     log(`Clicking contact button...`);
-await sleep(3000);
+    await sleep(3000);
 
-// Scroll to bottom to ensure button is rendered and in view
-await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-await sleep(2000);
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await sleep(2000);
 
-// Use JS dispatch of both mousedown and click events
-const clicked = await page.evaluate(() => {
-  const btn = document.querySelector('.Event_Contact_Directly_Button');
-  if (!btn) return false;
-  btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-  btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-  btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  return true;
-});
-if (!clicked) throw new Error('Could not find Contact Building Directly button');
-await sleep(randomBetween(4000, 6000));
+    const clicked = await page.evaluate(() => {
+      const btn = document.querySelector('.Event_Contact_Directly_Button');
+      if (!btn) return false;
+      btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      return true;
+    });
+    if (!clicked) throw new Error('Could not find Contact Building Directly button');
+    await sleep(randomBetween(4000, 6000));
 
-// Debug: take screenshot to see what happened after click
-await page.screenshot({ path: '/tmp/after-click.png' });
-const imgBase64 = fs.readFileSync('/tmp/after-click.png').toString('base64');
-log('SCREENSHOT_BASE64_START');
-console.log(imgBase64.substring(0, 500));
-log('SCREENSHOT_BASE64_END');
+    await page.screenshot({ path: '/tmp/after-click.png' });
+    const imgBase64 = fs.readFileSync('/tmp/after-click.png').toString('base64');
+    log('SCREENSHOT_BASE64_START');
+    console.log(imgBase64.substring(0, 500));
+    log('SCREENSHOT_BASE64_END');
+
     const CHAT_INPUT = 'textarea[placeholder*="Type the message"]';
     await page.waitForSelector(CHAT_INPUT, { timeout: 20000 });
     log(`Chatbot open. Starting form...`);
