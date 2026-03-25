@@ -82,10 +82,10 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
     // Click "Contact Building Directly"
     log(`Looking for contact button…`);
     const contactBtn = await page.waitForSelector(
-  '.ant-btn-plus, button:has-text("Contact Building Directly")',
+  '.Event_Contact_Directly_Button',
   { timeout: 15000 }
 );
-await page.evaluate((btn) => btn.scrollIntoView(), await contactBtn.elementHandle());
+await contactBtn.scrollIntoViewIfNeeded();
 await sleep(1000);
     await randomMouseMove(page);
     await contactBtn.click();
