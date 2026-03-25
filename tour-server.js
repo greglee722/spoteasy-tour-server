@@ -65,11 +65,9 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
     log(`Clicking contact button...`);
     await sleep(5000);
 
-    // Scroll to bottom first
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await sleep(2000);
 
-    // Get all matching buttons and click the first one with real pixel coordinates
     const buttons = page.locator('.Event_Contact_Directly_Button');
     const count = await buttons.count();
     log(`Found ${count} contact buttons`);
@@ -81,8 +79,16 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
         const box = await btn.boundingBox();
         log(`Button ${i} boundingBox: ${JSON.stringify(box)}`);
         if (box && box.width > 0 && box.height > 0) {
-          await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-          log(`Clicked button ${i} at ${box.x + box.width / 2}, ${box.y + box.height / 2}`);
+          // Scroll so button is centered in viewport
+          await page.evaluate((y) => window.scrollTo(0, y - 400), box.y);
+          await sleep(1000);
+          // Get updated position after scroll
+          const newBox = await btn.boundingBox();
+          log(`Button ${i} after scroll: ${JSON.stringify(newBox)}`);
+          await page.mouse.move(newBox.x + newBox.width / 2, newBox.y + newBox.height / 2);
+          await sleep(500);
+          await page.mouse.click(newBox.x + newBox.width / 2, newBox.y + newBox.height / 2);
+          log(`Clicked button ${i}`);
           clickedBtn = true;
           break;
         }
