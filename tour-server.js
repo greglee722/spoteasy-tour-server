@@ -63,16 +63,23 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
     await sleep(randomBetween(1000, 2000));
 
     log(`Clicking contact button...`);
-    await sleep(3000);
+await sleep(3000);
 
-    const btn = await page.$('.Event_Contact_Directly_Button');
-    if (!btn) throw new Error('Could not find Contact Building Directly button');
-    await btn.scrollIntoViewIfNeeded();
-    await sleep(1000);
-    await page.mouse.move(randomBetween(100, 900), randomBetween(100, 700));
-    await sleep(500);
-    await btn.click({ force: true, delay: 100 });
-    await sleep(randomBetween(4000, 6000));
+// Scroll to bottom to ensure button is rendered and in view
+await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+await sleep(2000);
+
+// Use JS dispatch of both mousedown and click events
+const clicked = await page.evaluate(() => {
+  const btn = document.querySelector('.Event_Contact_Directly_Button');
+  if (!btn) return false;
+  btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+  btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+  btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  return true;
+});
+if (!clicked) throw new Error('Could not find Contact Building Directly button');
+await sleep(randomBetween(4000, 6000));
 
     const CHAT_INPUT = 'textarea[placeholder*="Type the message"]';
     await page.waitForSelector(CHAT_INPUT, { timeout: 20000 });
