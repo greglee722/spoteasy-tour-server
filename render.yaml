@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: spoteasy-tour-server
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
