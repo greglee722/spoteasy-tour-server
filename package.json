@@ -4,9 +4,9 @@
   "description": "SpotEasy tour request automation — CSV-driven, human-like timing",
   "main": "tour-server.js",
   "scripts": {
-    "start": "node tour-server.js",
+    "start": "PLAYWRIGHT_BROWSERS_PATH=/opt/render/project/.playwright node tour-server.js",
     "dev": "node tour-server.js",
-    "postinstall": "npx playwright install chromium"
+    "postinstall": "PLAYWRIGHT_BROWSERS_PATH=/opt/render/project/.playwright npx playwright install chromium"
   },
   "dependencies": {
     "csv-parser": "^3.0.0",
