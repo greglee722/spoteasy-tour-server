@@ -82,7 +82,10 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
     await page.screenshot({ path: '/tmp/after-click.png' });
     const imgBase64 = fs.readFileSync('/tmp/after-click.png').toString('base64');
     log('SCREENSHOT_BASE64_START');
-    console.log(imgBase64.substring(0, 500));
+    // Log full base64 in chunks
+for (let i = 0; i < imgBase64.length; i += 2000) {
+  console.log(imgBase64.substring(i, i + 2000));
+}
     log('SCREENSHOT_BASE64_END');
 
     const CHAT_INPUT = 'textarea[placeholder*="Type the message"]';
