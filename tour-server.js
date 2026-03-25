@@ -68,7 +68,7 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
 
     // Navigate
     log(`Navigating to property…`);
-    await page.goto(propertyUrl, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.goto(propertyUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await sleep(randomBetween(1500, 3000));
 
     // Simulate reading the page
