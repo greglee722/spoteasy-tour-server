@@ -63,30 +63,36 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
     await sleep(randomBetween(1000, 2000));
 
     log(`Clicking contact button...`);
-    await sleep(3000);
+    await sleep(5000);
 
+    // Scroll to bottom first
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await sleep(2000);
 
-    const clicked = await page.evaluate(() => {
-      const btn = document.querySelector('.Event_Contact_Directly_Button');
-      if (!btn) return false;
-      btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-      btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-      btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      return true;
-    });
-    if (!clicked) throw new Error('Could not find Contact Building Directly button');
-    await sleep(randomBetween(4000, 6000));
+    // Get all matching buttons and click the first one with real pixel coordinates
+    const buttons = page.locator('.Event_Contact_Directly_Button');
+    const count = await buttons.count();
+    log(`Found ${count} contact buttons`);
 
-    await page.screenshot({ path: '/tmp/after-click.png' });
-    const imgBase64 = fs.readFileSync('/tmp/after-click.png').toString('base64');
-    log('SCREENSHOT_BASE64_START');
-    // Log full base64 in chunks
-for (let i = 0; i < imgBase64.length; i += 2000) {
-  console.log(imgBase64.substring(i, i + 2000));
-}
-    log('SCREENSHOT_BASE64_END');
+    let clickedBtn = false;
+    for (let i = 0; i < count; i++) {
+      try {
+        const btn = buttons.nth(i);
+        const box = await btn.boundingBox();
+        log(`Button ${i} boundingBox: ${JSON.stringify(box)}`);
+        if (box && box.width > 0 && box.height > 0) {
+          await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+          log(`Clicked button ${i} at ${box.x + box.width / 2}, ${box.y + box.height / 2}`);
+          clickedBtn = true;
+          break;
+        }
+      } catch (e) {
+        log(`Button ${i} error: ${e.message}`);
+      }
+    }
+
+    if (!clickedBtn) throw new Error('Could not click any Contact Building Directly button');
+    await sleep(randomBetween(4000, 6000));
 
     const CHAT_INPUT = 'textarea[placeholder*="Type the message"]';
     await page.waitForSelector(CHAT_INPUT, { timeout: 20000 });
