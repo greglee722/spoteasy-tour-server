@@ -86,10 +86,9 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
   { timeout: 15000 }
 );
 await contactBtn.scrollIntoViewIfNeeded();
-await sleep(1000);
-    await randomMouseMove(page);
-    await contactBtn.click();
-    await sleep(randomBetween(2000, 3500));
+await sleep(2000);
+await contactBtn.click({ force: true });
+await sleep(randomBetween(2000, 3500));
 
     // Wait for chatbot textarea
     const CHAT_INPUT = 'textarea[placeholder*="Type the message"]';
