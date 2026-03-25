@@ -52,7 +52,7 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
     const page = await context.newPage();
 
     log(`Navigating to property...`);
-    await page.goto(propertyUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.goto(propertyUrl, { waitUntil: 'networkidle', timeout: 90000 });
     await sleep(randomBetween(2000, 4000));
 
     await randomMouseMove(page);
@@ -81,6 +81,9 @@ const clicked = await page.evaluate(() => {
 if (!clicked) throw new Error('Could not find Contact Building Directly button');
 await sleep(randomBetween(4000, 6000));
 
+// Debug: take screenshot to see what happened after click
+await page.screenshot({ path: '/tmp/after-click.png' });
+log('Screenshot saved to /tmp/after-click.png');
     const CHAT_INPUT = 'textarea[placeholder*="Type the message"]';
     await page.waitForSelector(CHAT_INPUT, { timeout: 20000 });
     log(`Chatbot open. Starting form...`);
