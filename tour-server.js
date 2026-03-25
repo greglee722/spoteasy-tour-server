@@ -91,7 +91,7 @@ await sleep(randomBetween(2000, 3500));
 
     // Wait for chatbot textarea
     const CHAT_INPUT = 'textarea[placeholder*="Type the message"]';
-    await page.waitForSelector(CHAT_INPUT, { timeout: 10000 });
+    await page.waitForSelector(CHAT_INPUT, { timeout: 20000 });
     log(`Chatbot open. Starting form…`);
 
     // Helper: type into chatbot and send
