@@ -79,15 +79,14 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
     await page.evaluate(() => window.scrollBy(0, window.innerHeight * 0.4));
     await sleep(randomBetween(800, 1500));
 
-    // Click "Contact Building Directly"
-    log(`Looking for contact button…`);
-    const contactBtn = await page.waitForSelector(
-  '.Event_Contact_Directly_Button',
-  { timeout: 15000 }
-);
-await contactBtn.scrollIntoViewIfNeeded();
-await sleep(2000);
-await contactBtn.click({ force: true });
+   // Click "Contact Building Directly" button
+log('Looking for contact button...');
+await sleep(3000); // let page fully render
+await page.evaluate(() => {
+  const buttons = Array.from(document.querySelectorAll('button.Event_Contact_Directly_Button'));
+  if (buttons.length > 0) buttons[0].click();
+  else throw new Error('Contact button not found in DOM');
+});
 await sleep(randomBetween(2000, 3500));
 
     // Wait for chatbot textarea
