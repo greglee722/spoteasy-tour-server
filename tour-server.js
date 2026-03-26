@@ -59,18 +59,7 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await sleep(2000);
 
-    // Log ALL buttons to find which are actually visible
-    const allBtns = await page.evaluate(() => {
-      return [...document.querySelectorAll('button')].map(b => ({
-        text: b.textContent.trim().substring(0, 50),
-        class: b.className.substring(0, 60),
-        visible: b.offsetParent !== null,
-        rect: b.getBoundingClientRect()
-      }));
-    });
-    log('All buttons:', JSON.stringify(allBtns));
-
-    // Click the first visible "Contact Building Directly" button
+    // Click the visible Contact Building Directly button
     const clicked = await page.evaluate(() => {
       const btns = [...document.querySelectorAll('button')];
       const target = btns.find(b =>
@@ -80,67 +69,39 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
         target.click();
         return { found: true, text: target.textContent.trim().substring(0, 50) };
       }
-      // Fallback: click any visible Event_Contact_Directly_Button
-      const fallback = btns.find(b =>
-        b.className.includes('Event_Contact_Directly_Button') && b.offsetParent !== null
-      );
-      if (fallback) {
-        fallback.click();
-        return { found: true, text: fallback.textContent.trim().substring(0, 50) };
-      }
       return { found: false };
     });
     log('Click result:', JSON.stringify(clicked));
-    await sleep(randomBetween(3000, 5000));
+    if (!clicked.found) throw new Error('Could not find visible Contact Building Directly button');
 
-    // Check what changed on the page
-    const afterClick = await page.evaluate(() => {
-      const chatEls = [...document.querySelectorAll('[class*="chat"], [class*="Chat"], [class*="modal"], [class*="Modal"], iframe')];
-      return chatEls.map(el => ({
-        tag: el.tagName,
-        id: el.id,
-        class: el.className.substring(0, 80),
-        visible: el.offsetParent !== null,
-        display: window.getComputedStyle(el).display,
-        visibility: window.getComputedStyle(el).visibility
-      }));
+    // Wait for the SpotEasy RSC chatbot modal to open
+    log('Waiting for chatbot modal...');
+    await page.waitForSelector('.rsc', { timeout: 15000 });
+    log('Chatbot modal open!');
+    await sleep(2000);
+
+    // Log inputs inside the chatbot
+    const chatInputs = await page.evaluate(() => {
+      const els = [...document.querySelectorAll('.rsc textarea, .rsc input, .chatbot_chatbot__TjaBX textarea, .chatbot_chatbot__TjaBX input')];
+      return els.map(el => ({ tag: el.tagName, placeholder: el.placeholder, id: el.id, class: el.className.substring(0, 80) }));
     });
-    log('After click elements:', JSON.stringify(afterClick));
+    log('Chatbot inputs:', JSON.stringify(chatInputs));
 
-    // Wait for Drift iframe to become visible (state: visible)
-    log('Waiting for Drift iframe to become visible...');
-    await page.waitForFunction(() => {
-      const iframe = document.querySelector('iframe.drift-frame-chat');
-      if (!iframe) return false;
-      const style = window.getComputedStyle(iframe);
-      return style.display !== 'none' && style.visibility !== 'hidden' && iframe.offsetParent !== null;
-    }, { timeout: 20000 });
-
-    const driftFrameEl = await page.$('iframe.drift-frame-chat');
-    const frame = await driftFrameEl.contentFrame();
-    log('Switched into Drift iframe');
-
-    await frame.waitForSelector('textarea', { timeout: 15000 });
-
-    const frameInputs = await frame.evaluate(() => {
-      const els = [...document.querySelectorAll('textarea, input')];
-      return els.map(el => ({ tag: el.tagName, placeholder: el.placeholder, id: el.id, class: el.className.substring(0, 60) }));
-    });
-    log('Inputs inside Drift iframe:', JSON.stringify(frameInputs));
-
-    log('Chatbot open. Starting form...');
-    const CHAT_INPUT = 'textarea';
+    // The RSC chatbot uses a textarea inside .rsc-input-container
+    const CHAT_INPUT = '.rsc textarea, .rsc input[type="text"]';
+    await page.waitForSelector(CHAT_INPUT, { timeout: 10000 });
+    log('Chat input found. Starting form...');
 
     async function chatSend(text) {
       await randomMouseMove(page);
-      await frame.waitForSelector(CHAT_INPUT, { timeout: 5000 });
-      await frame.click(CHAT_INPUT);
+      await page.waitForSelector(CHAT_INPUT, { timeout: 5000 });
+      await page.click(CHAT_INPUT);
       for (const char of text) {
-        await frame.type(CHAT_INPUT, char, { delay: randomBetween(30, 100) });
+        await page.keyboard.type(char, { delay: randomBetween(30, 100) });
       }
       await sleep(randomBetween(400, 900));
-      await frame.keyboard.press('Enter');
-      await sleep(randomBetween(1800, 3000));
+      await page.keyboard.press('Enter');
+      await sleep(randomBetween(2000, 3500));
     }
 
     log(`Entering first name: ${name}`);
