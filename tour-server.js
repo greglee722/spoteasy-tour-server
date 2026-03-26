@@ -76,13 +76,21 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
 
     // Wait for the SpotEasy RSC chatbot modal to open
     log('Waiting for chatbot modal...');
-    await page.waitForSelector('.rsc', { timeout: 15000 });
+    try {
+      await page.waitForSelector('.rsc', { timeout: 30000 });
+    } catch (e) {
+      throw new Error('Chatbot modal did not open - this building may not support direct contact');
+    }
     log('Chatbot modal open!');
     await sleep(2000);
 
     // The input has class rsc-input
     const CHAT_INPUT = 'input.rsc-input';
-    await page.waitForSelector(CHAT_INPUT, { timeout: 10000 });
+    try {
+      await page.waitForSelector(CHAT_INPUT, { timeout: 10000 });
+    } catch (e) {
+      throw new Error('Chat input not found inside modal');
+    }
     log('Chat input found. Starting form...');
 
     async function chatSend(text) {
@@ -156,12 +164,7 @@ async function runQueue(jobId, rows) {
       jobs[jobId].done++;
       continue;
     }
-    if (i > 0) {
-      const waitSec = randomBetween(60, 90);
-      console.log(`[Job ${jobId}] Waiting ${waitSec}s before row ${i + 1}...`);
-      jobs[jobId].nextIn = waitSec;
-      await sleep(waitSec * 1000);
-    }
+    // No delay between submissions - start next immediately
     jobs[jobId].nextIn = null;
     const result = await submitTourRequest(entry);
     jobs[jobId].results.push({ row: i + 1, ...result });
@@ -181,7 +184,7 @@ app.post('/submit-csv', upload.single('file'), async (req, res) => {
   const jobId = `job_${Date.now()}`;
   jobs[jobId] = { status: 'queued', results: [], total: rows.length, done: 0, errors: 0, nextIn: null };
   runQueue(jobId, rows).catch(err => { jobs[jobId].status = 'failed'; jobs[jobId].fatalError = err.message; });
-  res.json({ jobId, message: `Job queued. Processing ${rows.length} tour request(s) with 60-90s delays between each.`, statusUrl: `/job/${jobId}` });
+  res.json({ jobId, message: `Job queued. Processing ${rows.length} tour request(s).`, statusUrl: `/job/${jobId}` });
 });
 
 app.post('/submit-one', async (req, res) => {
