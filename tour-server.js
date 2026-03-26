@@ -59,36 +59,69 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await sleep(2000);
 
-    const buttons = page.locator('.Event_Contact_Directly_Button');
-    const count = await buttons.count();
-    log(`Found ${count} contact buttons`);
+    // Log ALL buttons to find which are actually visible
+    const allBtns = await page.evaluate(() => {
+      return [...document.querySelectorAll('button')].map(b => ({
+        text: b.textContent.trim().substring(0, 50),
+        class: b.className.substring(0, 60),
+        visible: b.offsetParent !== null,
+        rect: b.getBoundingClientRect()
+      }));
+    });
+    log('All buttons:', JSON.stringify(allBtns));
 
-    for (let i = 0; i < count; i++) {
-      try {
-        const btn = buttons.nth(i);
-        const box = await btn.boundingBox();
-        log(`Button ${i} boundingBox: ${JSON.stringify(box)}`);
-        if (box && box.width > 0 && box.height > 0) {
-          await btn.click({ force: true });
-          log(`Native click done on button ${i}`);
-          break;
-        }
-      } catch (e) {
-        log(`Button ${i} error: ${e.message}`);
+    // Click the first visible "Contact Building Directly" button
+    const clicked = await page.evaluate(() => {
+      const btns = [...document.querySelectorAll('button')];
+      const target = btns.find(b =>
+        b.textContent.includes('Contact Building Directly') && b.offsetParent !== null
+      );
+      if (target) {
+        target.click();
+        return { found: true, text: target.textContent.trim().substring(0, 50) };
       }
-    }
+      // Fallback: click any visible Event_Contact_Directly_Button
+      const fallback = btns.find(b =>
+        b.className.includes('Event_Contact_Directly_Button') && b.offsetParent !== null
+      );
+      if (fallback) {
+        fallback.click();
+        return { found: true, text: fallback.textContent.trim().substring(0, 50) };
+      }
+      return { found: false };
+    });
+    log('Click result:', JSON.stringify(clicked));
+    await sleep(randomBetween(3000, 5000));
 
-    // Chat is inside a Drift iframe - wait for it then switch in
-    log('Waiting for Drift iframe...');
-    const driftFrameEl = await page.waitForSelector('iframe.drift-frame-chat', { timeout: 20000 });
+    // Check what changed on the page
+    const afterClick = await page.evaluate(() => {
+      const chatEls = [...document.querySelectorAll('[class*="chat"], [class*="Chat"], [class*="modal"], [class*="Modal"], iframe')];
+      return chatEls.map(el => ({
+        tag: el.tagName,
+        id: el.id,
+        class: el.className.substring(0, 80),
+        visible: el.offsetParent !== null,
+        display: window.getComputedStyle(el).display,
+        visibility: window.getComputedStyle(el).visibility
+      }));
+    });
+    log('After click elements:', JSON.stringify(afterClick));
+
+    // Wait for Drift iframe to become visible (state: visible)
+    log('Waiting for Drift iframe to become visible...');
+    await page.waitForFunction(() => {
+      const iframe = document.querySelector('iframe.drift-frame-chat');
+      if (!iframe) return false;
+      const style = window.getComputedStyle(iframe);
+      return style.display !== 'none' && style.visibility !== 'hidden' && iframe.offsetParent !== null;
+    }, { timeout: 20000 });
+
+    const driftFrameEl = await page.$('iframe.drift-frame-chat');
     const frame = await driftFrameEl.contentFrame();
     log('Switched into Drift iframe');
 
-    // Try common Drift textarea placeholders
-    const CHAT_INPUT = 'textarea';
-    await frame.waitForSelector(CHAT_INPUT, { timeout: 15000 });
+    await frame.waitForSelector('textarea', { timeout: 15000 });
 
-    // Log what we find inside the iframe
     const frameInputs = await frame.evaluate(() => {
       const els = [...document.querySelectorAll('textarea, input')];
       return els.map(el => ({ tag: el.tagName, placeholder: el.placeholder, id: el.id, class: el.className.substring(0, 60) }));
@@ -96,6 +129,7 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
     log('Inputs inside Drift iframe:', JSON.stringify(frameInputs));
 
     log('Chatbot open. Starting form...');
+    const CHAT_INPUT = 'textarea';
 
     async function chatSend(text) {
       await randomMouseMove(page);
