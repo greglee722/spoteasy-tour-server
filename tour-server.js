@@ -80,15 +80,8 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
     log('Chatbot modal open!');
     await sleep(2000);
 
-    // Log inputs inside the chatbot
-    const chatInputs = await page.evaluate(() => {
-      const els = [...document.querySelectorAll('.rsc textarea, .rsc input, .chatbot_chatbot__TjaBX textarea, .chatbot_chatbot__TjaBX input')];
-      return els.map(el => ({ tag: el.tagName, placeholder: el.placeholder, id: el.id, class: el.className.substring(0, 80) }));
-    });
-    log('Chatbot inputs:', JSON.stringify(chatInputs));
-
-    // The RSC chatbot uses a textarea inside .rsc-input-container
-    const CHAT_INPUT = '.rsc textarea, .rsc input[type="text"]';
+    // The input has class rsc-input
+    const CHAT_INPUT = 'input.rsc-input';
     await page.waitForSelector(CHAT_INPUT, { timeout: 10000 });
     log('Chat input found. Starting form...');
 
@@ -96,6 +89,7 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
       await randomMouseMove(page);
       await page.waitForSelector(CHAT_INPUT, { timeout: 5000 });
       await page.click(CHAT_INPUT);
+      await page.fill(CHAT_INPUT, '');
       for (const char of text) {
         await page.keyboard.type(char, { delay: randomBetween(30, 100) });
       }
