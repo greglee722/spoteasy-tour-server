@@ -79,16 +79,26 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
         const box = await btn.boundingBox();
         log(`Button ${i} boundingBox: ${JSON.stringify(box)}`);
         if (box && box.width > 0 && box.height > 0) {
-          // Scroll so button is centered in viewport
-          await page.evaluate((y) => window.scrollTo(0, y - 400), box.y);
-          await sleep(1000);
-          // Get updated position after scroll
-          const newBox = await btn.boundingBox();
-          log(`Button ${i} after scroll: ${JSON.stringify(newBox)}`);
-          await page.mouse.move(newBox.x + newBox.width / 2, newBox.y + newBox.height / 2);
-          await sleep(500);
-          await page.mouse.click(newBox.x + newBox.width / 2, newBox.y + newBox.height / 2);
-          log(`Clicked button ${i}`);
+          // Trigger React's synthetic event system directly
+          const triggered = await page.evaluate((idx) => {
+            const btns = document.querySelectorAll('.Event_Contact_Directly_Button');
+            const btn = btns[idx];
+            if (!btn) return false;
+            // Get React fiber and call onClick directly
+            const key = Object.keys(btn).find(k => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance'));
+            if (key) {
+              let fiber = btn[key];
+              while (fiber) {
+                if (fiber.memoizedProps && fiber.memoizedProps.onClick) {
+                  fiber.memoizedProps.onClick({ type: 'click', preventDefault: () => {}, stopPropagation: () => {} });
+                  return true;
+                }
+                fiber = fiber.return;
+              }
+            }
+            return false;
+          }, i);
+          log(`React trigger result: ${triggered}`);
           clickedBtn = true;
           break;
         }
