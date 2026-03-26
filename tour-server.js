@@ -79,12 +79,10 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
         const box = await btn.boundingBox();
         log(`Button ${i} boundingBox: ${JSON.stringify(box)}`);
         if (box && box.width > 0 && box.height > 0) {
-          // Trigger React's synthetic event system directly
           const triggered = await page.evaluate((idx) => {
             const btns = document.querySelectorAll('.Event_Contact_Directly_Button');
             const btn = btns[idx];
             if (!btn) return false;
-            // Get React fiber and call onClick directly
             const key = Object.keys(btn).find(k => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance'));
             if (key) {
               let fiber = btn[key];
@@ -108,7 +106,14 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
     }
 
     if (!clickedBtn) throw new Error('Could not click any Contact Building Directly button');
-    await sleep(randomBetween(4000, 6000));
+    await sleep(5000);
+
+    // Debug: log all textareas and inputs on page to find the right selector
+    const inputs = await page.evaluate(() => {
+      const els = [...document.querySelectorAll('textarea, input[type="text"], input:not([type])')];
+      return els.map(el => ({ tag: el.tagName, placeholder: el.placeholder, id: el.id, class: el.className.substring(0, 60) }));
+    });
+    log('Inputs found after click:', JSON.stringify(inputs));
 
     const CHAT_INPUT = 'textarea[placeholder*="Type the message"]';
     await page.waitForSelector(CHAT_INPUT, { timeout: 20000 });
