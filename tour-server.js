@@ -18,15 +18,6 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function humanType(page, selector, text) {
-  await page.waitForSelector(selector, { timeout: 10000 });
-  await page.click(selector);
-  for (const char of text) {
-    await page.keyboard.type(char);
-    await sleep(randomBetween(30, 100));
-  }
-}
-
 async function randomMouseMove(page) {
   await page.mouse.move(randomBetween(100, 900), randomBetween(100, 700));
   await sleep(randomBetween(100, 300));
@@ -68,7 +59,6 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await sleep(2000);
 
-    // Try multiple click strategies in sequence
     const buttons = page.locator('.Event_Contact_Directly_Button');
     const count = await buttons.count();
     log(`Found ${count} contact buttons`);
@@ -79,7 +69,6 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
         const box = await btn.boundingBox();
         log(`Button ${i} boundingBox: ${JSON.stringify(box)}`);
         if (box && box.width > 0 && box.height > 0) {
-          // Playwright native click with force
           await btn.click({ force: true });
           log(`Native click done on button ${i}`);
           break;
@@ -89,39 +78,34 @@ async function submitTourRequest({ name, lastName, phone, email, propertyUrl }) 
       }
     }
 
-    // Wait and check what appeared
-    await sleep(3000);
-    const htmlLen = await page.evaluate(() => document.body.innerHTML.length);
-    log(`Page HTML length after click: ${htmlLen}`);
+    // Chat is inside a Drift iframe - wait for it then switch in
+    log('Waiting for Drift iframe...');
+    const driftFrameEl = await page.waitForSelector('iframe.drift-frame-chat', { timeout: 20000 });
+    const frame = await driftFrameEl.contentFrame();
+    log('Switched into Drift iframe');
 
-    // Look for any new elements that appeared
-    const newEls = await page.evaluate(() => {
-      const chatEls = [...document.querySelectorAll('[class*="chat"], [class*="Chat"], [class*="message"], [class*="Message"], iframe, [role="dialog"]')];
-      return chatEls.map(el => ({ tag: el.tagName, id: el.id, class: el.className.substring(0, 80) }));
+    // Try common Drift textarea placeholders
+    const CHAT_INPUT = 'textarea';
+    await frame.waitForSelector(CHAT_INPUT, { timeout: 15000 });
+
+    // Log what we find inside the iframe
+    const frameInputs = await frame.evaluate(() => {
+      const els = [...document.querySelectorAll('textarea, input')];
+      return els.map(el => ({ tag: el.tagName, placeholder: el.placeholder, id: el.id, class: el.className.substring(0, 60) }));
     });
-    log('Chat-like elements:', JSON.stringify(newEls));
+    log('Inputs inside Drift iframe:', JSON.stringify(frameInputs));
 
-    await sleep(3000);
-
-    const CHAT_INPUT = 'textarea[placeholder*="Type the message"]';
-    await page.waitForSelector(CHAT_INPUT, { timeout: 20000 });
-    log(`Chatbot open. Starting form...`);
+    log('Chatbot open. Starting form...');
 
     async function chatSend(text) {
       await randomMouseMove(page);
-      await humanType(page, CHAT_INPUT, text);
-      await sleep(randomBetween(400, 900));
-      const sendSelectors = [
-        'button[aria-label="Send"]',
-        'button[aria-label="send"]',
-        'button[title="Send"]',
-        'form button[type="submit"]'
-      ];
-      let sent = false;
-      for (const sel of sendSelectors) {
-        try { const b = await page.$(sel); if (b) { await b.click(); sent = true; break; } } catch (_) {}
+      await frame.waitForSelector(CHAT_INPUT, { timeout: 5000 });
+      await frame.click(CHAT_INPUT);
+      for (const char of text) {
+        await frame.type(CHAT_INPUT, char, { delay: randomBetween(30, 100) });
       }
-      if (!sent) await page.keyboard.press('Enter');
+      await sleep(randomBetween(400, 900));
+      await frame.keyboard.press('Enter');
       await sleep(randomBetween(1800, 3000));
     }
 
